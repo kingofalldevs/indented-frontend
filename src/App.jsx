@@ -92,10 +92,10 @@ export default function App() {
 
   const { speak, isSpeaking, cancel } = useSpeech()
 
-  const handleMessage = useCallback(async (text) => {
+  const handleMessage = useCallback(async (text, wasVoice = false) => {
     if (!text.trim() || isProcessing) return
     cancel()
-    setVoiceLoop(true)
+    setVoiceLoop(wasVoice)
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setIsProcessing(true)
 
@@ -157,7 +157,7 @@ export default function App() {
     }
   }, [messages, isProcessing, cancel, speak])
 
-  const { isListening, start, stop } = useListen(handleMessage)
+  const { isListening, start, stop } = useListen((t) => handleMessage(t, true))
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => setUser(u))
