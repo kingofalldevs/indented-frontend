@@ -213,41 +213,56 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Auth Button Top-Left */}
-      <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 100 }}>
-        {user ? (
+      {/* Sidebar Toolrail - LAPTOP ONLY */}
+      {!isMobile && (
+        <div style={{ width: 60, borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, gap: 20, flexShrink: 0 }}>
           <button 
-            onClick={handleLogout}
-            title="Sign Out"
-            style={{ 
-              background: '#0a0a0a', border: '1px solid #222', borderRadius: '50%', padding: 4, 
-              color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-              transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-            }}>
-            <img 
-              src={user.photoURL} 
-              alt="Profile" 
-              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} 
-            />
+            onClick={() => setIsSidebarOpen(true)}
+            style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', transition: 'color 0.2s' }}
+            onMouseEnter={(e) => e.target.style.color = '#3b82f6'}
+            onMouseLeave={(e) => e.target.style.color = '#555'}>
+            <Menu size={24} />
           </button>
-        ) : (
-          <button 
-            onClick={handleLogin}
-            style={{ 
-              background: '#fff', border: 'none', borderRadius: 100, padding: '8px 16px', 
-              color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
-              fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}>
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.79 2.71v2.25h2.91c1.7-1.56 2.68-3.86 2.68-6.61z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.25c-.81.54-1.85.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.95v2.3C2.43 15.89 5.5 18 9 18z"/>
-              <path fill="#FBBC05" d="M3.96 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.98H.95C.35 6.19 0 7.56 0 9s.35 2.81.95 4.02l3.01-2.3z"/>
-              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.5 0 2.43 2.11.95 5.12l3.01 2.3c.71-2.13 2.7-3.71 5.04-3.71z"/>
-            </svg>
-            Sign In
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Auth Button Top-Left - MOBILE ONLY */}
+      {isMobile && (
+        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 100 }}>
+          {user ? (
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              title={user.displayName}
+              style={{ 
+                background: '#0a0a0a', border: '1px solid #222', borderRadius: '50%', padding: 4, 
+                color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              }}>
+              <img 
+                src={user.photoURL} 
+                alt="Profile" 
+                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} 
+              />
+            </button>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              style={{ 
+                background: '#fff', border: 'none', borderRadius: 100, padding: '8px 16px', 
+                color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}>
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.79 2.71v2.25h2.91c1.7-1.56 2.68-3.86 2.68-6.61z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.25c-.81.54-1.85.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.95v2.3C2.43 15.89 5.5 18 9 18z"/>
+                <path fill="#FBBC05" d="M3.96 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.98H.95C.35 6.19 0 7.56 0 9s.35 2.81.95 4.02l3.01-2.3z"/>
+                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.47.89 11.43 0 9 0 5.5 0 2.43 2.11.95 5.12l3.01 2.3c.71-2.13 2.7-3.71 5.04-3.71z"/>
+              </svg>
+              Sign In
+            </button>
+          )}
+        </div>
+      )}
 
       {/* IDE Board */}
       <div style={{ flex: 1, padding: isMobile ? '70px 10px 10px' : 20, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, paddingBottom: isMobile ? 120 : 20 }}>
