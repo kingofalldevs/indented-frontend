@@ -114,7 +114,8 @@ export default function App() {
         body: JSON.stringify({ 
           message: text, 
           history: messages,
-          user_name: user?.displayName || 'Student'
+          user_name: user?.displayName || 'Student',
+          current_code: code
         })
       })
 
