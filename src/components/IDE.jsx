@@ -38,6 +38,8 @@ export default function IDE({ code, onCodeChange }) {
   const [localCode, setLocalCode] = useState(code || '')
   const [terminal, setTerminal] = useState([{ type: 'sys', text: 'Indie Runtime v1.0 · Ready.' }])
   const [running, setRunning] = useState(false)
+  const [pendingInput, setPendingInput] = useState(false)
+  const [inputValue, setInputValue] = useState('')
   const textareaRef = useRef(null)
   const preRef = useRef(null)
 
@@ -77,14 +79,15 @@ export default function IDE({ code, onCodeChange }) {
     }
   }
 
-  const run = async () => {
-    let stdin = "";
-    if (/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
-      stdin = window.prompt("Your program requires input! Please enter the input values separated by spaces:") || "";
-    }
-
+  const executeBackend = async (stdin) => {
+    setPendingInput(false)
+    setInputValue('')
     setRunning(true)
-    setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
+    
+    // Only print the startup command if we didn't already print it during the pending input phase
+    if (!stdin && !/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
+      setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
+    }
     
     try {
       const RENDER_BACKEND = "https://indented-backend.onrender.com";
@@ -120,6 +123,19 @@ export default function IDE({ code, onCodeChange }) {
     } finally {
       setRunning(false)
     }
+  }
+
+  const run = () => {
+    if (/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
+      setTerminal(p => [
+        ...p, 
+        { type: 'sys', text: '$ g++ main.cpp -o main && ./main' },
+        { type: 'sys', text: '[Program Requires Input]' }
+      ])
+      setPendingInput(true);
+      return;
+    }
+    executeBackend("")
   }
 
   const clearTerm = () => setTerminal([{ type: 'sys', text: 'Terminal cleared.' }])
@@ -179,6 +195,27 @@ export default function IDE({ code, onCodeChange }) {
               {l.type === 'sys' ? '' : '→ '}{l.text}
             </div>
           ))}
+          {pendingInput && (
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
+              <span style={{ color: '#ffbd2e', fontSize: 12, marginRight: 8, fontFamily: 'monospace' }}>❯</span>
+              <input 
+                autoFocus
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setTerminal(p => [...p, { type: 'out', text: inputValue }])
+                    executeBackend(inputValue)
+                  }
+                }}
+                style={{ 
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none', 
+                  color: '#e5e7eb', fontSize: 12, fontFamily: 'monospace' 
+                }} 
+                placeholder="Type input and press Enter..." 
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
