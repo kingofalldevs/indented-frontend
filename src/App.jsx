@@ -80,6 +80,16 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [user, setUser] = useState(null) // Mock user state for now
 
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 860)
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 860)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const { speak, isSpeaking, cancel } = useSpeech()
 
   const handleMessage = useCallback(async (text) => {
@@ -90,7 +100,15 @@ export default function App() {
     setIsProcessing(true)
 
     try {
-      const res = await fetch('/api/chat', {
+      // Hardened Production Fallback
+      const RENDER_BACKEND = "https://indented-backend.onrender.com";
+      const apiUrl = import.meta.env.VITE_API_URL || RENDER_BACKEND;
+      // In dev, use the vite proxy so we test locally. In prod, use the external URL.
+      const fetchUrl = import.meta.env.DEV 
+        ? '/api/chat' 
+        : (apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/chat` : '/api/chat');
+      
+      const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -176,24 +194,54 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Sidebar Toolrail */}
-      <div style={{ width: 60, borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, gap: 20 }}>
+      {/* Sidebar Toolrail - Hidden on mobile, or just keep it and add hamburger somewhere else? Let's keep it but adjust layout if needed. Actually we'll keep it so users can sign in */}
+      {!isMobile && (
+        <div style={{ width: 60, borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, gap: 20, flexShrink: 0 }}>
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', transition: 'color 0.2s' }}
+            onMouseEnter={(e) => e.target.style.color = '#3b82f6'}
+            onMouseLeave={(e) => e.target.style.color = '#555'}>
+            <Menu size={24} />
+          </button>
+        </div>
+      )}
+
+      {/* Floating Hamburger for Mobile */}
+      {isMobile && (
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', transition: 'color 0.2s' }}
-          onMouseEnter={(e) => e.target.style.color = '#3b82f6'}
-          onMouseLeave={(e) => e.target.style.color = '#555'}>
-          <Menu size={24} />
+          style={{ position: 'absolute', top: 16, left: 16, zIndex: 40, background: '#0a0a0a', border: '1px solid #222', borderRadius: 8, padding: 8, color: '#fff', cursor: 'pointer', display: 'flex' }}>
+          <Menu size={20} />
         </button>
-      </div>
+      )}
 
       {/* IDE Board */}
-      <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, padding: isMobile ? '70px 10px 10px' : 20, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, paddingBottom: isMobile ? 120 : 20 }}>
         <IDE code={code} onCodeChange={setCode} />
       </div>
 
-      {/* Mentor Panel */}
-      <div style={{ width: 380 }}>
+      {/* Mentor Panel Mobile Wrapper */}
+      <div style={
+        isMobile ? {
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: isMobileChatOpen ? '65vh' : 'auto', maxHeight: isMobileChatOpen ? 500 : 'auto', zIndex: 60,
+          background: '#000', borderTop: '1px solid #222', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+          overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          boxShadow: isMobileChatOpen ? '0 -10px 40px rgba(0,0,0,0.8)' : '0 -4px 20px rgba(0,0,0,0.5)',
+          transition: 'height 0.3s ease, max-height 0.3s ease'
+        } : {
+          width: 380, flexShrink: 0
+        }
+      }>
+        {isMobile && isMobileChatOpen && (
+          <button onClick={() => setIsMobileChatOpen(false)} style={{
+            position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', 
+            color: '#555', fontSize: 24, cursor: 'pointer', zIndex: 10, lineHeight: 1
+          }}>
+            ×
+          </button>
+        )}
         <MentorPanel
           messages={messages}
           isProcessing={isProcessing}
@@ -201,6 +249,8 @@ export default function App() {
           isSpeaking={isSpeaking}
           onSend={handleMessage}
           onToggleMic={toggleMic}
+          isCollapsed={isMobile && !isMobileChatOpen}
+          onExpand={() => setIsMobileChatOpen(true)}
         />
       </div>
     </div>

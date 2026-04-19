@@ -33,12 +33,6 @@ function highlight(raw) {
 }
 
 
-function simulate(code) {
-  const matches = [...code.matchAll(/cout\s*<<\s*"([^"]*)"/g)]
-  if (matches.length) return matches.map(m => m[1])
-  if (code.includes('int main')) return ['// Program ran with no output']
-  return ['// Write some code and click RUN']
-}
 
 export default function IDE({ code, onCodeChange }) {
   const [localCode, setLocalCode] = useState(code || '')
@@ -82,18 +76,49 @@ export default function IDE({ code, onCodeChange }) {
     }
   }
 
-  const run = () => {
+  const run = async () => {
+    let stdin = "";
+    if (/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
+      stdin = window.prompt("Your program requires input! Please enter the input values separated by spaces:") || "";
+    }
+
     setRunning(true)
     setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
-    setTimeout(() => {
-      const out = simulate(localCode)
+    
+    try {
+      const RENDER_BACKEND = "https://indented-backend.onrender.com";
+      const apiUrl = import.meta.env.VITE_API_URL || RENDER_BACKEND;
+      const fetchUrl = import.meta.env.DEV 
+        ? '/api/run' 
+        : (apiUrl ? `${apiUrl.replace(/\/$/, '')}/api/run` : '/api/run');
+        
+      const res = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: localCode, stdin: stdin })
+      })
+      
+      if (!res.ok) {
+        throw new Error(`Backend returned a ${res.status} error. Have you definitely restarted the python backend?`)
+      }
+      
+      const data = await res.json()
+      const out_lines = data.output.split('\n')
+      
       setTerminal(p => [
         ...p,
-        ...out.map(t => ({ type: 'out', text: t })),
+        ...out_lines.map(t => ({ type: 'out', text: t })),
         { type: 'sys', text: 'Process exited with code 0.' }
       ])
+    } catch (e) {
+      setTerminal(p => [
+        ...p,
+        { type: 'out', text: `ERROR: Backend unreachable or crashed. ${e}` },
+        { type: 'sys', text: 'Process forcefully terminated.' }
+      ])
+    } finally {
       setRunning(false)
-    }, 750)
+    }
   }
 
   const clearTerm = () => setTerminal([{ type: 'sys', text: 'Terminal cleared.' }])
@@ -141,12 +166,12 @@ export default function IDE({ code, onCodeChange }) {
       </div>
 
       {/* Terminal */}
-      <div style={{ flex: '0 0 160px', borderTop: '2px solid #111', background: '#050505', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ height: 160, flexShrink: 0, minHeight: 0, borderTop: '2px solid #111', background: '#050505', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', borderBottom: '1px solid #111' }}>
           <span style={{ color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>TERMINAL</span>
           <button onClick={clearTerm} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 10 }}>CLR</button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', minHeight: 0 }}>
           {terminal.map((l, i) => (
             <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: l.type === 'out' ? '#3b82f6' : '#3a3a3a' }}>
               {l.type === 'sys' ? '' : '→ '}{l.text}
