@@ -2,7 +2,10 @@ import React, { useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Send } from 'lucide-react'
 
-export default function MentorPanel({ messages, isProcessing, isListening, isSpeaking, onSend, onToggleMic, isCollapsed, onExpand }) {
+export default function MentorPanel({ 
+  messages, isProcessing, isListening, isSpeaking, onSend, onToggleMic, 
+  isCollapsed, onExpand, proposedCode, onAcceptCode, onRejectCode 
+}) {
   const inputRef = useRef(null)
   const logRef = useRef(null)
 
@@ -98,6 +101,23 @@ export default function MentorPanel({ messages, isProcessing, isListening, isSpe
               </div>
             </motion.div>
           ))}
+          
+          {proposedCode && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              style={{ padding: '14px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid #3b82f6', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+              <div style={{ color: '#3b82f6', fontSize: 11, fontWeight: 800, letterSpacing: 0.5 }}>INDIE SUGGESTED A CODE UPDATE</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={onAcceptCode} style={{ flex: 1, padding: '8px 0', background: '#3b82f6', border: 'none', borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                  onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
+                  ACCEPT CODE
+                </button>
+                <button onClick={onRejectCode} style={{ flex: 1, padding: '8px 0', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#ccc', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.target.style.background = '#222'} onMouseLeave={e => e.target.style.background = 'transparent'}>
+                  DECLINE
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
       )}
 

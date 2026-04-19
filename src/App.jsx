@@ -72,6 +72,7 @@ int main() {
 
 export default function App() {
   const [code, setCode] = useState(INITIAL_CODE)
+  const [proposedCode, setProposedCode] = useState(null)
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'System online. I am Indie — your C++ logic mentor. Ask me anything or speak to begin.' }
   ])
@@ -96,6 +97,7 @@ export default function App() {
     if (!text.trim() || isProcessing) return
     cancel()
     setVoiceLoop(wasVoice)
+    setProposedCode(null)
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setIsProcessing(true)
 
@@ -136,9 +138,9 @@ export default function App() {
       const mm = full.match(markdownRegex)
       
       if (cm) {
-        setCode(cm[1].trim())
+        setProposedCode(cm[1].trim())
       } else if (mm) {
-        setCode(mm[1].trim())
+        setProposedCode(mm[1].trim())
       }
 
       // Hide all code blocks from the chat bubble
@@ -300,6 +302,12 @@ export default function App() {
           onToggleMic={toggleMic}
           isCollapsed={isMobile && !isMobileChatOpen}
           onExpand={() => setIsMobileChatOpen(true)}
+          proposedCode={proposedCode}
+          onAcceptCode={() => {
+            setCode(proposedCode);
+            setProposedCode(null);
+          }}
+          onRejectCode={() => setProposedCode(null)}
         />
       </div>
     </div>
