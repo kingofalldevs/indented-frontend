@@ -127,11 +127,25 @@ export default function App() {
         full += dec.decode(value, { stream: true })
       }
 
-      // Extract code blocks
-      const cm = full.match(/\[\[CODE:\s*([\s\S]*?)\]\]/)
-      if (cm) setCode(cm[1].trim())
+      // Extract code blocks (Support custom format + Markdown fallback)
+      const codeRegex = /\[\[CODE:\s*([\s\S]*?)\]\]/
+      const markdownRegex = /```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/
+      
+      const cm = full.match(codeRegex)
+      const mm = full.match(markdownRegex)
+      
+      if (cm) {
+        setCode(cm[1].trim())
+      } else if (mm) {
+        setCode(mm[1].trim())
+      }
 
-      const clean = full.replace(/\[\[CODE:[\s\S]*?\]\]/g, '').trim()
+      // Hide all code blocks from the chat bubble
+      const clean = full
+        .replace(codeRegex, '')
+        .replace(markdownRegex, '')
+        .trim();
+
       setMessages(prev => [...prev, { role: 'assistant', content: clean }])
       speak(clean)
     } catch {
