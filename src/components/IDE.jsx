@@ -148,7 +148,7 @@ export default function IDE({ code, onCodeChange }) {
         <pre ref={preRef} aria-hidden style={{
           position: 'absolute', inset: 0, margin: 0, padding: 20,
           fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
-          color: '#e5e7eb', whiteSpace: 'pre', overflow: 'hidden', pointerEvents: 'none', background: 'transparent'
+          color: '#e5e7eb', whiteSpace: 'pre', overflow: 'auto', pointerEvents: 'none', background: 'transparent'
         }} dangerouslySetInnerHTML={{ __html: highlight(localCode) }} />
         <textarea 
           ref={textareaRef} 
