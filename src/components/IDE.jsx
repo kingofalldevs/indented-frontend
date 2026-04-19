@@ -40,6 +40,7 @@ export default function IDE({ code, onCodeChange }) {
   const [running, setRunning] = useState(false)
   const [pendingInput, setPendingInput] = useState(false)
   const [inputValue, setInputValue] = useState('')
+  const [fullStdin, setFullStdin] = useState('')
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(false)
   const textareaRef = useRef(null)
   const preRef = useRef(null)
@@ -80,13 +81,17 @@ export default function IDE({ code, onCodeChange }) {
     }
   }
 
-  const executeBackend = async (stdin) => {
+  const executeBackend = async (stdin, isInteractive = false) => {
     setPendingInput(false)
     setInputValue('')
     setRunning(true)
     
-    // Only print the startup command if we didn't already print it during the pending input phase
-    if (!stdin && !/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
+    // Accumulate stdin
+    const newFullStdin = isInteractive ? (fullStdin + stdin + "\n") : ""
+    setFullStdin(newFullStdin)
+    
+    // Only print the startup command if it's a fresh run
+    if (!isInteractive) {
       setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
     }
     
@@ -100,20 +105,36 @@ export default function IDE({ code, onCodeChange }) {
       const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: localCode, stdin: stdin })
+        body: JSON.stringify({ code: localCode, stdin: newFullStdin })
       })
       
       if (!res.ok) {
-        throw new Error(`Backend returned a ${res.status} error. Have you definitely restarted the python backend?`)
+        throw new Error(`Backend returned a ${res.status} error.`)
       }
       
       const data = await res.json()
       const out_lines = data.output.split('\n')
       
-      setTerminal(p => [
-        ...p,
-        ...out_lines.map(t => ({ type: 'out', text: t })),
-      ])
+      if (isInteractive) {
+        // Remove the last N entries of "out" type that correspond to the previous partial output
+        // actually easier to just append if we don't want to overcomplicate, but let's try to be clean.
+        // For now, let's just clear the terminal and re-print the whole session to avoid duplicates
+        // But we want to keep the "sys" lines before this session.
+        setTerminal(p => {
+          // Find the last index of '$ g++' sys command
+          const lastCommandIdx = p.findLastIndex(l => l.type === 'sys' && l.text.includes('$ g++'))
+          const prefix = p.slice(0, lastCommandIdx + 1)
+          return [
+            ...prefix,
+            ...out_lines.map(t => ({ type: 'out', text: t }))
+          ]
+        })
+      } else {
+        setTerminal(p => [
+          ...p,
+          ...out_lines.map(t => ({ type: 'out', text: t })),
+        ])
+      }
 
       if (data.waiting_for_input) {
         setPendingInput(true);
@@ -123,7 +144,7 @@ export default function IDE({ code, onCodeChange }) {
     } catch (e) {
       setTerminal(p => [
         ...p,
-        { type: 'out', text: `ERROR: Backend unreachable or crashed. ${e}` },
+        { type: 'out', text: `ERROR: Backend unreachable or crashed. ${e.message}` },
         { type: 'sys', text: 'Process forcefully terminated.' }
       ])
     } finally {
@@ -133,8 +154,7 @@ export default function IDE({ code, onCodeChange }) {
 
   const run = () => {
     setIsTerminalExpanded(true)
-    setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
-    executeBackend("")
+    executeBackend("", false)
   }
 
   const clearTerm = () => setTerminal([{ type: 'sys', text: 'Terminal cleared.' }])
@@ -228,8 +248,7 @@ export default function IDE({ code, onCodeChange }) {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setTerminal(p => [...p, { type: 'out', text: inputValue }])
-                    executeBackend(inputValue)
+                    executeBackend(inputValue, true)
                   }
                 }}
                 style={{ 
