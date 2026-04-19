@@ -112,8 +112,13 @@ export default function IDE({ code, onCodeChange }) {
       setTerminal(p => [
         ...p,
         ...out_lines.map(t => ({ type: 'out', text: t })),
-        { type: 'sys', text: 'Process exited with code 0.' }
       ])
+
+      if (data.waiting_for_input) {
+        setPendingInput(true);
+      } else {
+        setTerminal(p => [...p, { type: 'sys', text: 'Process exited with code 0.' }])
+      }
     } catch (e) {
       setTerminal(p => [
         ...p,
@@ -126,15 +131,7 @@ export default function IDE({ code, onCodeChange }) {
   }
 
   const run = () => {
-    if (/\b(?:cin|getline|scanf|gets)\b/.test(localCode)) {
-      setTerminal(p => [
-        ...p, 
-        { type: 'sys', text: '$ g++ main.cpp -o main && ./main' },
-        { type: 'sys', text: '[Program Requires Input]' }
-      ])
-      setPendingInput(true);
-      return;
-    }
+    setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
     executeBackend("")
   }
 
