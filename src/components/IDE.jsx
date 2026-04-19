@@ -40,6 +40,7 @@ export default function IDE({ code, onCodeChange }) {
   const [running, setRunning] = useState(false)
   const [pendingInput, setPendingInput] = useState(false)
   const [inputValue, setInputValue] = useState('')
+  const [isTerminalExpanded, setIsTerminalExpanded] = useState(false)
   const textareaRef = useRef(null)
   const preRef = useRef(null)
 
@@ -131,6 +132,7 @@ export default function IDE({ code, onCodeChange }) {
   }
 
   const run = () => {
+    setIsTerminalExpanded(true)
     setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
     executeBackend("")
   }
@@ -181,12 +183,37 @@ export default function IDE({ code, onCodeChange }) {
       </div>
 
       {/* Terminal */}
-      <div style={{ height: 160, flexShrink: 0, minHeight: 0, borderTop: '2px solid #111', background: '#050505', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', borderBottom: '1px solid #111' }}>
-          <span style={{ color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>TERMINAL</span>
-          <button onClick={clearTerm} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 10 }}>CLR</button>
+      <div style={{ 
+        height: isTerminalExpanded ? 180 : 32, 
+        transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        flexShrink: 0, 
+        minHeight: 0, 
+        borderTop: '2px solid #111', 
+        background: '#050505', 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        <div 
+          onClick={() => setIsTerminalExpanded(!isTerminalExpanded)}
+          style={{ 
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+            padding: '4px 12px', borderBottom: '1px solid #111', cursor: 'pointer',
+            background: '#080808', flexShrink: 0
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>TERMINAL</span>
+            <span style={{ color: '#222', fontSize: 10 }}>{isTerminalExpanded ? '▼' : '▲'}</span>
+          </div>
+          <button 
+            onClick={(e) => { e.stopPropagation(); clearTerm(); }} 
+            style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 10 }}
+          >
+            CLR
+          </button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', minHeight: 0, opacity: isTerminalExpanded ? 1 : 0, transition: 'opacity 0.2s' }}>
           {terminal.map((l, i) => (
             <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: l.type === 'out' ? '#3b82f6' : '#3a3a3a' }}>
               {l.type === 'sys' ? '' : '→ '}{l.text}
