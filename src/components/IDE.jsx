@@ -44,6 +44,7 @@ export default function IDE({ code, onCodeChange }) {
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(false)
   const textareaRef = useRef(null)
   const preRef = useRef(null)
+  const accumulatedStdoutRef = useRef('')
 
   useEffect(() => {
     if (code !== undefined && code !== localCode) setLocalCode(code)
@@ -90,9 +91,14 @@ export default function IDE({ code, onCodeChange }) {
     const newFullStdin = isInteractive ? (fullStdin + stdin + "\n") : ""
     setFullStdin(newFullStdin)
     
-    // Only print the startup command if it's a fresh run
-    if (!isInteractive) {
+    // Manage terminal display
+    if (isInteractive) {
+      if (stdin !== undefined && stdin !== null) {
+        setTerminal(p => [...p, { type: 'in', text: stdin }])
+      }
+    } else {
       setTerminal(p => [...p, { type: 'sys', text: '$ g++ main.cpp -o main && ./main' }])
+      accumulatedStdoutRef.current = ''
     }
     
     try {
@@ -113,28 +119,34 @@ export default function IDE({ code, onCodeChange }) {
       }
       
       const data = await res.json()
-      const out_lines = data.output.split('\n')
       
+      let fullOut = data.output || ""
+      let prevOut = accumulatedStdoutRef.current
+      let newOut = fullOut
+
+      let isFallback = false;
       if (isInteractive) {
-        // Remove the last N entries of "out" type that correspond to the previous partial output
-        // actually easier to just append if we don't want to overcomplicate, but let's try to be clean.
-        // For now, let's just clear the terminal and re-print the whole session to avoid duplicates
-        // But we want to keep the "sys" lines before this session.
-        setTerminal(p => {
-          // Find the last index of '$ g++' sys command
-          const lastCommandIdx = p.findLastIndex(l => l.type === 'sys' && l.text.includes('$ g++'))
-          const prefix = p.slice(0, lastCommandIdx + 1)
-          return [
-            ...prefix,
-            ...out_lines.map(t => ({ type: 'out', text: t }))
-          ]
-        })
-      } else {
-        setTerminal(p => [
-          ...p,
-          ...out_lines.map(t => ({ type: 'out', text: t })),
-        ])
+        if (fullOut.startsWith(prevOut)) {
+          newOut = fullOut.substring(prevOut.length)
+        } else {
+          isFallback = true;
+        }
       }
+      
+      accumulatedStdoutRef.current = fullOut
+      
+      let linesToAppend = []
+      if (isFallback) {
+         linesToAppend.push({ type: 'sys', text: '--- context reset (non-deterministic output detected) ---' })
+      }
+      
+      if (newOut) {
+        if (newOut.endsWith('\n')) newOut = newOut.slice(0, -1)
+        const mapped = newOut.split('\n').map(t => ({ type: 'out', text: t }))
+        linesToAppend = [...linesToAppend, ...mapped]
+      }
+      
+      setTerminal(p => [...p, ...linesToAppend])
 
       if (data.waiting_for_input) {
         setPendingInput(true);
@@ -235,8 +247,8 @@ export default function IDE({ code, onCodeChange }) {
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', minHeight: 0, opacity: isTerminalExpanded ? 1 : 0, transition: 'opacity 0.2s' }}>
           {terminal.map((l, i) => (
-            <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: l.type === 'out' ? '#3b82f6' : '#3a3a3a' }}>
-              {l.type === 'sys' ? '' : '→ '}{l.text}
+            <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: l.type === 'out' ? '#3b82f6' : l.type === 'in' ? '#27c93f' : '#3a3a3a' }}>
+              {l.type === 'sys' ? '' : l.type === 'in' ? '❯ ' : '→ '}{l.text}
             </div>
           ))}
           {pendingInput && (
