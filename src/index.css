@@ -1,0 +1,37 @@
+:root {
+  --void: #000000;
+  --surface: #0a0a0a;
+  --border: #1a1a1a;
+  --blue: #3b82f6;
+  --white: #ffffff;
+  --muted: #555555;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--void);
+  color: var(--white);
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.jetbrains-mono {
+  font-family: 'JetBrains Mono', monospace;
+  tab-size: 4;
+}
+
+/* Syntax Highlighting Tokens */
+.tok-comment { color: #4b5563; }
+.tok-kw { color: #60a5fa; font-weight: 600; }
+.tok-str { color: #34d399; }
+.tok-op { color: #a78bfa; }
+.tok-std { color: #f472b6; }
+.tok-num { color: #fbbf24; }
+
+#root {
+  height: 100vh;
+  display: flex;
+}
