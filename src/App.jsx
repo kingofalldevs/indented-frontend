@@ -173,9 +173,14 @@ export default function App() {
   }, [voiceLoop, isSpeaking, isProcessing, isListening, start])
 
   const toggleMic = () => {
-    if (isSpeaking) cancel()
-    else if (isListening) stop()
-    else { setVoiceLoop(true); start() }
+    if (isListening) {
+      stop();
+      setVoiceLoop(false);
+    } else {
+      if (isSpeaking) cancel();
+      setVoiceLoop(true);
+      start();
+    }
   }
 
   const handleLogin = async () => {
