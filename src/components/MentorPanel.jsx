@@ -103,23 +103,32 @@ export default function MentorPanel({ messages, isProcessing, isListening, isSpe
 
       {/* Input bar */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #111', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#0a0a0a', border: '1px solid #222', borderRadius: 100, padding: '6px 6px 6px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#0a0a0a', border: '1px solid #222', borderRadius: 100, padding: '4px 8px 4px 6px' }}>
+          {/* Voice Left */}
+          <button onClick={onToggleMic} style={{
+            width: 38, height: 38, borderRadius: '50%', border: 'none',
+            background: isListening ? '#3b82f6' : '#111',
+            color: isListening ? '#fff' : '#444',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}>
+            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
+
           <input
             ref={inputRef}
             placeholder="Ask Indie anything..."
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             style={{ flex: 1, background: 'none', border: 'none', color: '#fff', outline: 'none', fontSize: 13 }}
           />
-          <button onClick={submit} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <Send size={15} />
-          </button>
-          <button onClick={onToggleMic} style={{
-            width: 34, height: 34, borderRadius: '50%', border: 'none',
-            background: isListening ? '#3b82f6' : '#111',
-            color: isListening ? '#fff' : '#555',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+
+          {/* Chat/Send Right */}
+          <button onClick={submit} style={{ 
+            background: '#1a1a1a', border: 'none', color: '#3b82f6', 
+            width: 34, height: 34, borderRadius: '50%',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
           }}>
-            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+            <Send size={15} />
           </button>
         </div>
       </div>
