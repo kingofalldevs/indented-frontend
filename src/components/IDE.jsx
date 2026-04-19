@@ -48,6 +48,7 @@ export default function IDE({ code, onCodeChange }) {
   const syncScroll = () => {
     if (preRef.current && textareaRef.current) {
       preRef.current.scrollTop = textareaRef.current.scrollTop
+      preRef.current.scrollLeft = textareaRef.current.scrollLeft
     }
   }
 
