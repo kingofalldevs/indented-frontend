@@ -117,6 +117,7 @@ export default function App() {
           message: text, 
           history: messages,
           user_name: user?.displayName || 'Student',
+          is_signed_in: !!user,
           current_code: code
         })
       })
