@@ -154,15 +154,15 @@ export default function App() {
       }
 
       // Extract Code Injection (Whiteboard)
-      const codeRegex = /\[\[CODE:\s*([\s\S]*?)\]\]/g
-      const codeMatch = codeRegex.exec(full)
+      const codeRegex = /\[\[CODE:\s*([\s\S]*?)\]\]/
+      const codeMatch = full.match(codeRegex)
       if (codeMatch) {
          setCode(codeMatch[1].trim())
       }
 
       // Hide tags from the chat bubble & speech
       const clean = full
-        .replace(codeRegex, '') // Strip code tag from speech/bubble
+        .replace(/\[\[CODE:\s*([\s\S]*?)\]\]/g, '') // Strip code tag from speech/bubble
         .replace(/```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/g, '') // Hide raw markdown blocks
         .replace(errorRegex, '')
         .replace(completionRegex, '')
