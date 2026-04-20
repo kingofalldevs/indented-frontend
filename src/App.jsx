@@ -15,7 +15,8 @@ function useSpeech() {
     const synth = window.speechSynthesis
     if (!synth || !text) return
     synth.cancel()
-    const u = new SpeechSynthesisUtterance(text)
+    const cleanForSpeech = text.replace(/[`*#]/g, '') // Strip symbols that shouldn't be spoken
+    const u = new SpeechSynthesisUtterance(cleanForSpeech)
     const voices = synth.getVoices()
     const english = voices.filter(v => v.lang.startsWith('en'))
     const voice = english.find(v => v.name.includes('Daniel'))
@@ -149,14 +150,20 @@ export default function App() {
         const ids = completionMatches.map(m => parseInt(m[1], 10))
         const newCompletions = [...new Set([...completedModules, ...ids])]
         setCompletedModules(newCompletions)
-        // Store in Firestore
         setDoc(doc(db, 'users', user.uid), { completedModules: newCompletions }, { merge: true })
       }
 
-      // Hide tags from the chat bubble
+      // Extract Code Injection (Whiteboard)
+      const codeRegex = /\[\[CODE:\s*([\s\S]*?)\]\]/g
+      const codeMatch = codeRegex.exec(full)
+      if (codeMatch) {
+         setCode(codeMatch[1].trim())
+      }
+
+      // Hide tags from the chat bubble & speech
       const clean = full
-        .replace(/\[\[CODE:\s*([\s\S]*?)\]\]/g, (match, p1) => `(Code solution provided below)`) 
-        .replace(/```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/g, '')
+        .replace(codeRegex, '') // Strip code tag from speech/bubble
+        .replace(/```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/g, '') // Hide raw markdown blocks
         .replace(errorRegex, '')
         .replace(completionRegex, '')
         .trim();
