@@ -259,6 +259,22 @@ export default function App() {
         </div>
       )}
 
+      {/* Brand Header - MOBILE ONLY */}
+      {isMobile && (
+        <div style={{ position: 'absolute', top: 24, right: 20, zIndex: 100 }}>
+          <span style={{ 
+            color: '#fff', 
+            fontSize: 18, 
+            fontWeight: 900, 
+            letterSpacing: 1, 
+            fontFamily: '"JetBrains Mono", monospace',
+            textTransform: 'uppercase'
+          }}>
+            Indented
+          </span>
+        </div>
+      )}
+
       {/* Auth Button Top-Left - MOBILE ONLY */}
       {isMobile && (
         <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 100 }}>
