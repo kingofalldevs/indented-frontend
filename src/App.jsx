@@ -271,7 +271,12 @@ export default function App() {
 
       {/* IDE Board */}
       <div style={{ flex: 1, padding: isMobile ? '70px 10px 10px' : 20, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, paddingBottom: isMobile ? 120 : 20 }}>
-        <IDE code={code} onCodeChange={setCode} errorLines={errorLines} />
+        <IDE 
+          code={code} 
+          onCodeChange={handleCodeChange} 
+          errorLines={errorLines} 
+          onClearError={(line) => setErrorLines(prev => prev.filter(l => l !== line))}
+        />
       </div>
 
       {/* Mentor Panel Mobile Wrapper */}

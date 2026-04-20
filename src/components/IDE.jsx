@@ -34,7 +34,7 @@ function highlight(raw) {
 
 
 
-export default function IDE({ code, onCodeChange, errorLines = [] }) {
+export default function IDE({ code, onCodeChange, errorLines = [], onClearError }) {
   const [localCode, setLocalCode] = useState(code || '')
   const [terminal, setTerminal] = useState([{ type: 'sys', text: 'Indie Runtime v1.0 · Ready.' }])
   const [running, setRunning] = useState(false)
@@ -44,6 +44,7 @@ export default function IDE({ code, onCodeChange, errorLines = [] }) {
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(false)
   const textareaRef = useRef(null)
   const preRef = useRef(null)
+  const highlightRef = useRef(null)
   const accumulatedStdoutRef = useRef('')
 
   useEffect(() => {
@@ -54,6 +55,10 @@ export default function IDE({ code, onCodeChange, errorLines = [] }) {
     if (preRef.current && textareaRef.current) {
       preRef.current.scrollTop = textareaRef.current.scrollTop
       preRef.current.scrollLeft = textareaRef.current.scrollLeft
+    }
+    if (highlightRef.current && textareaRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft
     }
   }
 
@@ -193,7 +198,12 @@ export default function IDE({ code, onCodeChange, errorLines = [] }) {
       {/* Editor area */}
       <div style={{ flex: 2, position: 'relative', overflow: 'hidden', background: '#000' }}>
         {/* Error Underline Layer */}
-        <div style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
+        <div 
+          ref={highlightRef}
+          style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 1, overflow: 'auto', whiteSpace: 'pre' }}>
+          {/* Invisible spacer to match editor height for scrolling */}
+          <div style={{ height: localCode.split('\n').length * (15 * 1.75) + 40 }} />
+          
           {errorLines.map((lineNum, i) => (
             <div key={i} style={{
               position: 'absolute',
@@ -201,9 +211,24 @@ export default function IDE({ code, onCodeChange, errorLines = [] }) {
               left: 20,
               right: 20,
               height: (15 * 1.75),
-              borderBottom: '2px wavy rgba(239, 68, 68, 0.7)',
-              zIndex: 0
-            }} />
+              background: 'rgba(239, 68, 68, 0.15)',
+              borderBottom: '2px solid #ef4444',
+              zIndex: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              pointerEvents: 'auto'
+            }}>
+              <button 
+                onClick={() => onClearError && onClearError(lineNum)}
+                style={{ 
+                  background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, 
+                  fontSize: 10, padding: '2px 6px', cursor: 'pointer', marginRight: 10,
+                  fontWeight: 900
+                }}>
+                REMOVE
+              </button>
+            </div>
           ))}
         </div>
         
