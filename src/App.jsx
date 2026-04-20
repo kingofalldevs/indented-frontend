@@ -2,8 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react'
 import IDE from './components/IDE.jsx'
 import MentorPanel from './components/MentorPanel.jsx'
 import NavSidebar from './components/NavSidebar.jsx'
-import { auth, googleProvider } from './firebase/config'
+import { auth, googleProvider, db } from './firebase/config'
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { Menu } from 'lucide-react'
 
 // ── Speech Synthesis ──────────────────────────────────────────────
@@ -73,6 +74,7 @@ int main() {
 export default function App() {
   const [code, setCode] = useState(INITIAL_CODE)
   const [errorLines, setErrorLines] = useState([])
+  const [completedModules, setCompletedModules] = useState([])
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'System online. I am Nova — your C++ logic mentor. Ask me anything or speak to begin.' }
   ])
@@ -140,11 +142,23 @@ export default function App() {
         setErrorLines(lines)
       }
 
+      // Extract completions
+      const completionRegex = /\[\[COMPLETED:\s*(\d+)\s*\]\]/g
+      const completionMatches = Array.from(full.matchAll(completionRegex))
+      if (completionMatches.length > 0 && user) {
+        const ids = completionMatches.map(m => parseInt(m[1], 10))
+        const newCompletions = [...new Set([...completedModules, ...ids])]
+        setCompletedModules(newCompletions)
+        // Store in Firestore
+        setDoc(doc(db, 'users', user.uid), { completedModules: newCompletions }, { merge: true })
+      }
+
       // Hide tags from the chat bubble
       const clean = full
         .replace(/\[\[CODE:\s*([\s\S]*?)\]\]/g, (match, p1) => `(Code solution provided below)`) 
         .replace(/```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/g, '')
         .replace(errorRegex, '')
+        .replace(completionRegex, '')
         .trim();
 
       setMessages(prev => [...prev, { role: 'assistant', content: clean }])
@@ -161,7 +175,19 @@ export default function App() {
   const { isListening, start, stop } = useListen((t) => handleMessage(t, true))
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => setUser(u))
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u)
+      if (u) {
+        // Fetch progress from Firestore
+        const docRef = doc(db, 'users', u.uid)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          setCompletedModules(docSnap.data().completedModules || [])
+        }
+      } else {
+        setCompletedModules([])
+      }
+    })
     return () => unsub()
   }, [])
 
@@ -217,6 +243,7 @@ export default function App() {
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        completedModules={completedModules}
       />
 
       {/* Sidebar Toolrail - LAPTOP ONLY */}

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogIn, User, Settings, HelpCircle, LogOut, ChevronRight, BookOpen, ArrowLeft } from 'lucide-react';
+import { X, LogIn, User, Settings, HelpCircle, LogOut, ChevronRight, BookOpen, ArrowLeft, Check } from 'lucide-react';
 import { modules } from '../data/curriculum';
 
-export default function NavSidebar({ isOpen, onClose, user, onLogin, onLogout }) {
+export default function NavSidebar({ isOpen, onClose, user, onLogin, onLogout, completedModules = [] }) {
   const [activeView, setActiveView] = useState('main'); // 'main' | 'curriculum' | 'module'
   const [selectedModule, setSelectedModule] = useState(null);
 
@@ -110,26 +110,34 @@ export default function NavSidebar({ isOpen, onClose, user, onLogin, onLogout })
 
                 {activeView === 'curriculum' && (
                   <motion.div key="curriculum" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
-                    {modules.map((m) => (
-                      <button 
-                        key={m.id}
-                        onClick={() => handleModuleClick(m)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '16px',
-                          background: '#0a0a0a', border: '1px solid #111', borderRadius: 12, color: '#fff',
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', marginBottom: 10,
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#0e0e0e'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#111'; e.currentTarget.style.background = '#0a0a0a'; }}
-                      >
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#111', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900 }}>
-                          {m.id}
-                        </div>
-                        <span style={{ flex: 1 }}>{m.title.split('—')[1] || m.title}</span>
-                        <ChevronRight size={14} style={{ opacity: 0.3 }} />
-                      </button>
-                    ))}
+                    {modules.map((m) => {
+                      const isCompleted = completedModules.includes(m.id);
+                      return (
+                        <button 
+                          key={m.id}
+                          onClick={() => handleModuleClick(m)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '16px',
+                            background: '#0a0a0a', border: isCompleted ? '1px solid #3b82f633' : '1px solid #111', borderRadius: 12, color: '#fff',
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', marginBottom: 10,
+                            transition: 'all 0.2s',
+                            opacity: isCompleted ? 0.8 : 1
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#0e0e0e'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = isCompleted ? '#3b82f633' : '#111'; e.currentTarget.style.background = '#0a0a0a'; }}
+                        >
+                          <div style={{ 
+                            width: 24, height: 24, borderRadius: '50%', background: isCompleted ? '#3b82f622' : '#111', 
+                            color: isCompleted ? '#27c93f' : '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            fontSize: 10, fontWeight: 900 
+                          }}>
+                            {isCompleted ? <Check size={14} /> : m.id}
+                          </div>
+                          <span style={{ flex: 1 }}>{m.title.split('—')[1] || m.title}</span>
+                          {isCompleted ? <Check size={14} color="#27c93f" style={{ opacity: 0.6 }} /> : <ChevronRight size={14} style={{ opacity: 0.3 }} />}
+                        </button>
+                      );
+                    })}
                   </motion.div>
                 )}
 
