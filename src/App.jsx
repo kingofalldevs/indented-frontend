@@ -304,6 +304,7 @@ export default function App() {
           onCodeChange={handleCodeChange} 
           errorLines={errorLines} 
           onClearError={(line) => setErrorLines(prev => prev.filter(l => l !== line))}
+          onErrorsDetected={(lines) => setErrorLines(prev => [...new Set([...prev, ...lines])])}
         />
       </div>
 

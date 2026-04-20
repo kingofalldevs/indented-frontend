@@ -34,7 +34,7 @@ function highlight(raw) {
 
 
 
-export default function IDE({ code, onCodeChange, errorLines = [], onClearError }) {
+export default function IDE({ code, onCodeChange, errorLines = [], onClearError, onErrorsDetected }) {
   const [localCode, setLocalCode] = useState(code || '')
   const [terminal, setTerminal] = useState([{ type: 'sys', text: 'Indie Runtime v1.0 · Ready.' }])
   const [running, setRunning] = useState(false)
@@ -175,9 +175,8 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
       }
 
       // Fire red highlights for compiler errors
-      if (compilerErrorLines.length > 0) {
-        if (onClearError) compilerErrorLines.forEach(l => {}) // clear is handled separately
-        setErrorLines(prev => [...new Set([...prev, ...compilerErrorLines])])
+      if (compilerErrorLines.length > 0 && onErrorsDetected) {
+        onErrorsDetected(compilerErrorLines)
       }
       
       setTerminal(p => [...p, ...linesToAppend])
