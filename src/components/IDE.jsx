@@ -42,6 +42,11 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
   const [inputValue, setInputValue] = useState('')
   const [fullStdin, setFullStdin] = useState('')
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(false)
+  const [terminalHeight, setTerminalHeight] = useState(180)
+  const [isDragging, setIsDragging] = useState(false)
+  const [execTime, setExecTime] = useState(null)
+  const [exitCode, setExitCode] = useState(null)
+  const termBodyRef = useRef(null)
   const textareaRef = useRef(null)
   const preRef = useRef(null)
   const highlightRef = useRef(null)
@@ -98,6 +103,8 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
     setPendingInput(false)
     setInputValue('')
     setRunning(true)
+    setExitCode(null)
+    const t0 = Date.now()
     
     // Accumulate stdin
     const newFullStdin = isInteractive ? (fullStdin + stdin + "\n") : ""
@@ -126,17 +133,17 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
         body: JSON.stringify({ code: localCode, stdin: newFullStdin })
       })
       
-      if (!res.ok) {
-        throw new Error(`Backend returned a ${res.status} error.`)
-      }
+      if (!res.ok) throw new Error(`Backend returned a ${res.status} error.`)
       
       const data = await res.json()
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(2)
+      setExecTime(elapsed)
       
       let fullOut = data.output || ""
       let prevOut = accumulatedStdoutRef.current
       let newOut = fullOut
-
       let isFallback = false;
+
       if (isInteractive) {
         if (fullOut.startsWith(prevOut)) {
           newOut = fullOut.substring(prevOut.length)
@@ -148,14 +155,29 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
       accumulatedStdoutRef.current = fullOut
       
       let linesToAppend = []
-      if (isFallback) {
-         linesToAppend.push({ type: 'sys', text: '--- context reset (non-deterministic output detected) ---' })
-      }
-      
+      if (isFallback) linesToAppend.push({ type: 'sys', text: '--- context reset ---' })
+
+      // Parse compiler errors from g++ output: format is "main.cpp:LINE:COL: error: msg"
+      const compilerErrorLines = []
       if (newOut) {
         if (newOut.endsWith('\n')) newOut = newOut.slice(0, -1)
-        const mapped = newOut.split('\n').map(t => ({ type: 'out', text: t }))
-        linesToAppend = [...linesToAppend, ...mapped]
+        const parsed = newOut.split('\n').map(t => {
+          const errMatch = t.match(/[\w.]+:(\d+):\d+:\s*(error|warning|note):\s*(.*)/)
+          if (errMatch) {
+            const lineNum = parseInt(errMatch[1], 10)
+            const level = errMatch[2]
+            if (level === 'error') compilerErrorLines.push(lineNum)
+            return { type: level === 'error' ? 'error' : level === 'warning' ? 'warning' : 'note', text: t, line: lineNum }
+          }
+          return { type: 'out', text: t }
+        })
+        linesToAppend = [...linesToAppend, ...parsed]
+      }
+
+      // Fire red highlights for compiler errors
+      if (compilerErrorLines.length > 0) {
+        if (onClearError) compilerErrorLines.forEach(l => {}) // clear is handled separately
+        setErrorLines(prev => [...new Set([...prev, ...compilerErrorLines])])
       }
       
       setTerminal(p => [...p, ...linesToAppend])
@@ -163,12 +185,18 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
       if (data.waiting_for_input) {
         setPendingInput(true);
       } else {
-        setTerminal(p => [...p, { type: 'sys', text: 'Process exited with code 0.' }])
+        const code = data.exit_code ?? 0
+        setExitCode(code)
+        setTerminal(p => [...p, { 
+          type: code === 0 ? 'success' : 'error_exit', 
+          text: code === 0 ? `Process exited successfully. (${elapsed}s)` : `Process exited with code ${code}. (${elapsed}s)` 
+        }])
       }
     } catch (e) {
+      setExecTime(null)
       setTerminal(p => [
         ...p,
-        { type: 'out', text: `ERROR: Backend unreachable or crashed. ${e.message}` },
+        { type: 'error', text: `ERROR: Backend unreachable or crashed. ${e.message}` },
         { type: 'sys', text: 'Process forcefully terminated.' }
       ])
     } finally {
@@ -181,7 +209,27 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
     executeBackend("", false)
   }
 
-  const clearTerm = () => setTerminal([{ type: 'sys', text: 'Terminal cleared.' }])
+  const clearTerm = () => {
+    setTerminal([{ type: 'sys', text: 'Terminal cleared.' }])
+    setExitCode(null)
+    setExecTime(null)
+  }
+
+  // Auto-scroll terminal body
+  useEffect(() => {
+    if (termBodyRef.current) termBodyRef.current.scrollTop = termBodyRef.current.scrollHeight
+  }, [terminal])
+
+  // Drag-to-resize the terminal
+  const onDragStart = (e) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startH = terminalHeight
+    const onMove = (ev) => setTerminalHeight(Math.min(500, Math.max(80, startH - (ev.clientY - startY))))
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#000', border: '1px solid #1a1a1a', borderRadius: 10, overflow: 'hidden' }}>
@@ -208,7 +256,7 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
         <div ref={lineNumbersRef} style={{ 
           width: 45, background: '#050505', borderRight: '1px solid #111', 
           padding: '20px 0', color: '#333', textAlign: 'center', 
-          fontFamily: '"JetBrains Mono", monospace', fontSize: 13, lineHeight: '2.02', // Adjusted to match 1.75 line-height of 15px text
+          fontFamily: '"JetBrains Mono", monospace', fontSize: 15, lineHeight: '1.75', 
           overflow: 'hidden', userSelect: 'none', flexShrink: 0
         }}>
           {localCode.split('\n').map((_, i) => (
@@ -283,58 +331,121 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
 
       {/* Terminal */}
       <div style={{ 
-        height: isTerminalExpanded ? 180 : 32, 
-        transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        flexShrink: 0, 
-        minHeight: 0, 
-        borderTop: '2px solid #111', 
-        background: '#050505', 
-        display: 'flex', 
-        flexDirection: 'column',
-        overflow: 'hidden'
+        height: isTerminalExpanded ? terminalHeight : 32, 
+        transition: isDragging ? 'none' : 'height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        flexShrink: 0, minHeight: 0, background: '#050505', display: 'flex', flexDirection: 'column', overflow: 'hidden'
       }}>
+        {/* Drag Handle */}
+        {isTerminalExpanded && (
+          <div 
+            onMouseDown={onDragStart}
+            style={{ height: 4, cursor: 'ns-resize', background: '#0f0f0f', borderTop: '1px solid #1a1a1a', flexShrink: 0 }}
+          />
+        )}
+
+        {/* Header bar */}
         <div 
           onClick={() => setIsTerminalExpanded(!isTerminalExpanded)}
           style={{ 
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-            padding: '4px 12px', borderBottom: '1px solid #111', cursor: 'pointer',
-            background: '#080808', flexShrink: 0
+            padding: '0 12px', height: 28, cursor: 'pointer', background: '#070707', flexShrink: 0,
+            borderTop: isTerminalExpanded ? 'none' : '1px solid #111'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>TERMINAL</span>
-            <span style={{ color: '#222', fontSize: 10 }}>{isTerminalExpanded ? '▼' : '▲'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: '#3a3a3a', fontSize: 10, fontWeight: 800, letterSpacing: 1.5 }}>TERMINAL</span>
+            {exitCode !== null && (
+              <span style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: 1, padding: '1px 6px', borderRadius: 3,
+                background: exitCode === 0 ? '#27c93f22' : '#ef444422',
+                color: exitCode === 0 ? '#27c93f' : '#ef4444',
+                border: `1px solid ${exitCode === 0 ? '#27c93f44' : '#ef444444'}`
+              }}>
+                {exitCode === 0 ? '✓ SUCCESS' : `✗ EXIT ${exitCode}`}
+              </span>
+            )}
+            {running && (
+              <span style={{ fontSize: 9, color: '#3b82f6', fontWeight: 800, letterSpacing: 1, padding: '1px 6px', borderRadius: 3, background: '#3b82f622', border: '1px solid #3b82f644' }}>⟳ RUNNING...</span>
+            )}
           </div>
-          <button 
-            onClick={(e) => { e.stopPropagation(); clearTerm(); }} 
-            style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: 10 }}
-          >
-            CLR
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {execTime && !running && (
+              <span style={{ fontSize: 9, color: '#333', letterSpacing: 0.5 }}>{execTime}s</span>
+            )}
+            <button 
+              onClick={(e) => { e.stopPropagation(); clearTerm(); }} 
+              style={{ background: 'none', border: 'none', color: '#2a2a2a', cursor: 'pointer', fontSize: 10, letterSpacing: 1, fontWeight: 700, padding: '2px 6px', borderRadius: 3 }}
+              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+              onMouseLeave={e => e.currentTarget.style.color = '#2a2a2a'}
+            >
+              CLR
+            </button>
+            <span style={{ color: '#222', fontSize: 12 }}>{isTerminalExpanded ? '▼' : '▲'}</span>
+          </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', minHeight: 0, opacity: isTerminalExpanded ? 1 : 0, transition: 'opacity 0.2s' }}>
-          {terminal.map((l, i) => (
-            <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: l.type === 'out' ? '#3b82f6' : l.type === 'in' ? '#27c93f' : '#3a3a3a' }}>
-              {l.type === 'sys' ? '' : l.type === 'in' ? '❯ ' : '→ '}{l.text}
-            </div>
-          ))}
+
+        {/* Body */}
+        <div 
+          ref={termBodyRef}
+          style={{ flex: 1, overflowY: 'auto', padding: '10px 16px', minHeight: 0, background: '#050505' }}
+        >
+          {terminal.map((l, i) => {
+            const colorMap = {
+              out: '#c9d1d9',
+              in: '#27c93f',
+              sys: '#2a2a2a',
+              error: '#ef4444',
+              warning: '#f59e0b',
+              note: '#60a5fa',
+              success: '#27c93f',
+              error_exit: '#ef4444'
+            }
+            const prefixMap = {
+              out: '',
+              in: '❯ ',
+              sys: '  ',
+              error: '✗ ',
+              warning: '⚠ ',
+              note: '  ',
+              success: '✓ ',
+              error_exit: '✗ '
+            }
+            const isClickableError = (l.type === 'error' || l.type === 'warning') && l.line
+            return (
+              <div 
+                key={i} 
+                onClick={() => isClickableError && setErrorLines(prev => [...new Set([...prev, l.line])])}
+                style={{ 
+                  fontFamily: '"JetBrains Mono", monospace', 
+                  fontSize: 12, 
+                  lineHeight: 1.9, 
+                  color: colorMap[l.type] || '#c9d1d9',
+                  cursor: isClickableError ? 'pointer' : 'default',
+                  padding: '0 4px',
+                  borderRadius: 3,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => isClickableError && (e.currentTarget.style.background = '#ef444411')}
+                onMouseLeave={e => isClickableError && (e.currentTarget.style.background = 'none')}
+              >
+                <span style={{ opacity: 0.4, marginRight: 4 }}>{prefixMap[l.type]}</span>
+                {l.text}
+              </div>
+            )
+          })}
           {pendingInput && (
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
-              <span style={{ color: '#ffbd2e', fontSize: 12, marginRight: 8, fontFamily: 'monospace' }}>❯</span>
+              <span style={{ color: '#27c93f', fontSize: 12, marginRight: 8, fontFamily: 'monospace' }}>❯</span>
               <input 
                 autoFocus
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    executeBackend(inputValue, true)
-                  }
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') executeBackend(inputValue, true) }}
                 style={{ 
                   flex: 1, background: 'transparent', border: 'none', outline: 'none', 
-                  color: '#e5e7eb', fontSize: 12, fontFamily: 'monospace' 
+                  color: '#e5e7eb', fontSize: 12, fontFamily: '"JetBrains Mono", monospace'
                 }} 
-                placeholder="Type input and press Enter..." 
+                placeholder="Type and press Enter..."
               />
             </div>
           )}
@@ -343,3 +454,5 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
     </div>
   )
 }
+
+
