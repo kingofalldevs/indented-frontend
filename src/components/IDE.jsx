@@ -45,6 +45,7 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
   const textareaRef = useRef(null)
   const preRef = useRef(null)
   const highlightRef = useRef(null)
+  const lineNumbersRef = useRef(null)
   const accumulatedStdoutRef = useRef('')
 
   useEffect(() => {
@@ -52,13 +53,19 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
   }, [code])
 
   const syncScroll = () => {
-    if (preRef.current && textareaRef.current) {
-      preRef.current.scrollTop = textareaRef.current.scrollTop
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft
+    const top = textareaRef.current.scrollTop
+    const left = textareaRef.current.scrollLeft
+
+    if (preRef.current) {
+      preRef.current.scrollTop = top
+      preRef.current.scrollLeft = left
     }
-    if (highlightRef.current && textareaRef.current) {
-      highlightRef.current.scrollTop = textareaRef.current.scrollTop
-      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = top
+      highlightRef.current.scrollLeft = left
+    }
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = top
     }
   }
 
@@ -196,66 +203,82 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
       </div>
 
       {/* Editor area */}
-      <div style={{ flex: 2, position: 'relative', overflow: 'hidden', background: '#000' }}>
-        {/* Error Underline Layer */}
-        <div 
-          ref={highlightRef}
-          style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 4, overflow: 'auto', whiteSpace: 'pre' }}>
-          {/* Invisible spacer to match editor height for scrolling */}
-          <div style={{ height: localCode.split('\n').length * (15 * 1.75) + 40 }} />
-          
-          {errorLines.map((lineNum, i) => (
-            <div key={i} style={{
-              position: 'absolute',
-              top: (lineNum - 1) * (15 * 1.75) + 20,
-              left: 20,
-              right: 20,
-              height: (15 * 1.75),
-              background: 'rgba(239, 68, 68, 0.15)',
-              borderBottom: '2px solid #ef4444',
-              zIndex: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              pointerEvents: 'none' // Important: pass-through by default
-            }}>
-              <div style={{ pointerEvents: 'auto' }}> {/* Only make the button area clickable */}
-                <button 
-                  onClick={() => onClearError && onClearError(lineNum)}
-                  style={{ 
-                    background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, 
-                    fontSize: 10, padding: '2px 6px', cursor: 'pointer', marginRight: 10,
-                    fontWeight: 900
-                  }}>
-                  REMOVE
-                </button>
-              </div>
-            </div>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, background: '#000' }}>
+        {/* Gutter */}
+        <div ref={lineNumbersRef} style={{ 
+          width: 45, background: '#050505', borderRight: '1px solid #111', 
+          padding: '20px 0', color: '#333', textAlign: 'center', 
+          fontFamily: '"JetBrains Mono", monospace', fontSize: 13, lineHeight: '2.02', // Adjusted to match 1.75 line-height of 15px text
+          overflow: 'hidden', userSelect: 'none', flexShrink: 0
+        }}>
+          {localCode.split('\n').map((_, i) => (
+            <div key={i} style={{ color: errorLines.includes(i + 1) ? '#ef4444' : '#333', fontWeight: errorLines.includes(i + 1) ? 900 : 400 }}>{i + 1}</div>
           ))}
         </div>
-        
-        <pre ref={preRef} aria-hidden style={{
-          position: 'absolute', inset: 0, margin: 0, padding: 20,
-          fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
-          color: '#e5e7eb', whiteSpace: 'pre', overflow: 'auto', pointerEvents: 'none', background: 'transparent',
-          zIndex: 2
-        }} dangerouslySetInnerHTML={{ __html: highlight(localCode) }} />
-        <textarea 
-          ref={textareaRef} 
-          value={localCode} 
-          onChange={handleChange} 
-          onKeyDown={handleKeyDown}
-          onScroll={syncScroll} 
-          spellCheck={false} 
-          wrap="off"
-          style={{
+
+        {/* Core Editor Viewport */}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          {/* Error Underline Layer */}
+          <div 
+            ref={highlightRef}
+            style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 4, overflow: 'auto', whiteSpace: 'pre' }}>
+            {/* Invisible spacer to match editor height for scrolling */}
+            <div style={{ height: (localCode.split('\n').length + 5) * (15 * 1.75) }} />
+            
+            {errorLines.map((lineNum, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                top: (lineNum - 1) * (15 * 1.75) + 20,
+                left: 0,
+                right: 0,
+                height: (15 * 1.75),
+                background: 'rgba(239, 68, 68, 0.15)',
+                borderBottom: '2px solid #ef4444',
+                zIndex: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                pointerEvents: 'none'
+              }}>
+                <div style={{ pointerEvents: 'auto' }}>
+                  <button 
+                    onClick={() => onClearError && onClearError(lineNum)}
+                    style={{ 
+                      background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, 
+                      fontSize: 10, padding: '2px 6px', cursor: 'pointer', marginRight: 10,
+                      fontWeight: 900
+                    }}>
+                    REMOVE
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <pre ref={preRef} aria-hidden style={{
             position: 'absolute', inset: 0, margin: 0, padding: 20,
             fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
-            color: 'transparent', caretColor: '#3b82f6', background: 'transparent',
-            border: 'none', outline: 'none', resize: 'none', overflow: 'auto', whiteSpace: 'pre',
-            zIndex: 3
-          }} 
-        />
+            color: '#e5e7eb', whiteSpace: 'pre', overflow: 'auto', pointerEvents: 'none', background: 'transparent',
+            zIndex: 2
+          }} dangerouslySetInnerHTML={{ __html: highlight(localCode) }} />
+          
+          <textarea 
+            ref={textareaRef} 
+            value={localCode} 
+            onChange={handleChange} 
+            onKeyDown={handleKeyDown}
+            onScroll={syncScroll} 
+            spellCheck={false} 
+            wrap="off"
+            style={{
+              position: 'absolute', inset: 0, margin: 0, padding: 20,
+              fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
+              color: 'transparent', caretColor: '#3b82f6', background: 'transparent',
+              border: 'none', outline: 'none', resize: 'none', overflow: 'auto', whiteSpace: 'pre',
+              zIndex: 3
+            }} 
+          />
+        </div>
       </div>
 
       {/* Terminal */}
