@@ -200,7 +200,7 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
         {/* Error Underline Layer */}
         <div 
           ref={highlightRef}
-          style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 1, overflow: 'auto', whiteSpace: 'pre' }}>
+          style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 4, overflow: 'auto', whiteSpace: 'pre' }}>
           {/* Invisible spacer to match editor height for scrolling */}
           <div style={{ height: localCode.split('\n').length * (15 * 1.75) + 40 }} />
           
@@ -217,17 +217,19 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
-              pointerEvents: 'auto'
+              pointerEvents: 'none' // Important: pass-through by default
             }}>
-              <button 
-                onClick={() => onClearError && onClearError(lineNum)}
-                style={{ 
-                  background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, 
-                  fontSize: 10, padding: '2px 6px', cursor: 'pointer', marginRight: 10,
-                  fontWeight: 900
-                }}>
-                REMOVE
-              </button>
+              <div style={{ pointerEvents: 'auto' }}> {/* Only make the button area clickable */}
+                <button 
+                  onClick={() => onClearError && onClearError(lineNum)}
+                  style={{ 
+                    background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, 
+                    fontSize: 10, padding: '2px 6px', cursor: 'pointer', marginRight: 10,
+                    fontWeight: 900
+                  }}>
+                  REMOVE
+                </button>
+              </div>
             </div>
           ))}
         </div>
