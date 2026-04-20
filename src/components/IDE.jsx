@@ -157,38 +157,36 @@ export default function IDE({ code, onCodeChange, errorLines = [], onClearError,
       let linesToAppend = []
       if (isFallback) linesToAppend.push({ type: 'sys', text: '--- context reset ---' })
 
-      // Parse compiler errors from g++ output: format is "main.cpp:LINE:COL: error: msg"
+      // Parse compiler errors from g++ output
       const compilerErrorLines = []
       if (newOut) {
         if (newOut.endsWith('\n')) newOut = newOut.slice(0, -1)
-        const parsed = newOut.split('\n').map(t => {
-          const errMatch = t.match(/[\w.]+:(\d+):\d+:\s*(error|warning|note):\s*(.*)/)
-          if (errMatch) {
-            const lineNum = parseInt(errMatch[1], 10)
-            const level = errMatch[2]
-            if (level === 'error') compilerErrorLines.push(lineNum)
-            return { type: level === 'error' ? 'error' : level === 'warning' ? 'warning' : 'note', text: t, line: lineNum }
-          }
-          return { type: 'out', text: t }
-        })
+        const parsed = newOut.split('\n')
+          .filter(t => !t.includes('/Library/Developer/') && !t.includes('/usr/include/')) // Clean out noise
+          .map(t => {
+            const errMatch = t.match(/[\w.]+:(\d+):\d+:\s*(error|warning|note):\s*(.*)/)
+            if (errMatch) {
+              const lineNum = parseInt(errMatch[1], 10)
+              const level = errMatch[2]
+              if (level === 'error') compilerErrorLines.push(lineNum)
+              return { type: level === 'error' ? 'error' : level === 'warning' ? 'warning' : 'note', text: t, line: lineNum }
+            }
+            return { type: 'out', text: t }
+          })
         linesToAppend = [...linesToAppend, ...parsed]
       }
 
-      // Fire red highlights for compiler errors
-      if (compilerErrorLines.length > 0 && onErrorsDetected) {
-        onErrorsDetected(compilerErrorLines)
-      }
-      
       setTerminal(p => [...p, ...linesToAppend])
 
       if (data.waiting_for_input) {
         setPendingInput(true);
       } else {
-        const code = data.exit_code ?? 0
+        // Force failure if there were compiler errors
+        const code = compilerErrorLines.length > 0 ? 1 : (data.exit_code ?? 0)
         setExitCode(code)
         setTerminal(p => [...p, { 
           type: code === 0 ? 'success' : 'error_exit', 
-          text: code === 0 ? `Process exited successfully. (${elapsed}s)` : `Process exited with code ${code}. (${elapsed}s)` 
+          text: code === 0 ? `Process exited successfully. (${elapsed}s)` : `Process failed with errors. (${elapsed}s)` 
         }])
       }
     } catch (e) {
