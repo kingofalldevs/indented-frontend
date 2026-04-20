@@ -72,9 +72,9 @@ int main() {
 
 export default function App() {
   const [code, setCode] = useState(INITIAL_CODE)
-  const [proposedCode, setProposedCode] = useState(null)
+  const [errorLines, setErrorLines] = useState([])
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'System online. I am Indie — your C++ logic mentor. Ask me anything or speak to begin.' }
+    { role: 'assistant', content: 'System online. I am Nova — your C++ logic mentor. Ask me anything or speak to begin.' }
   ])
   const [isProcessing, setIsProcessing] = useState(false)
   const [voiceLoop, setVoiceLoop] = useState(false)
@@ -97,7 +97,7 @@ export default function App() {
     if (!text.trim() || isProcessing) return
     cancel()
     setVoiceLoop(wasVoice)
-    setProposedCode(null)
+    setErrorLines([])
     setMessages(prev => [...prev, { role: 'user', content: text }])
     setIsProcessing(true)
 
@@ -130,29 +130,26 @@ export default function App() {
         full += dec.decode(value, { stream: true })
       }
 
-      // Extract code blocks (Support custom format + Markdown fallback)
-      const codeRegex = /\[\[CODE:\s*([\s\S]*?)\]\]/
-      const markdownRegex = /```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/
+      // Extract error lines
+      const errorRegex = /\[\[ERROR:\s*(\d+)\s*\]\]/g
+      const errorMatches = Array.from(full.matchAll(errorRegex))
       
-      const cm = full.match(codeRegex)
-      const mm = full.match(markdownRegex)
-      
-      if (cm) {
-        setProposedCode(cm[1].trim())
-      } else if (mm) {
-        setProposedCode(mm[1].trim())
+      if (errorMatches.length > 0) {
+        const lines = errorMatches.map(m => parseInt(m[1], 10))
+        setErrorLines(lines)
       }
 
-      // Hide all code blocks from the chat bubble
+      // Hide tags from the chat bubble
       const clean = full
-        .replace(codeRegex, '')
-        .replace(markdownRegex, '')
+        .replace(/\[\[CODE:\s*([\s\S]*?)\]\]/g, (match, p1) => `(Code solution provided below)`) 
+        .replace(/```(?:cpp|c\+\+|c)?\s*([\s\S]*?)```/g, '')
+        .replace(errorRegex, '')
         .trim();
 
       setMessages(prev => [...prev, { role: 'assistant', content: clean }])
       speak(clean)
-    } catch {
-      const fallback = 'I am offline right now. Start the backend and try again.'
+    } catch (e) {
+      const fallback = 'Nova is currently offline. Please check your connection or restart the backend.'
       setMessages(prev => [...prev, { role: 'assistant', content: fallback }])
       speak(fallback)
     } finally {
@@ -167,13 +164,18 @@ export default function App() {
     return () => unsub()
   }, [])
 
-  // Auto re-listen after Indie finishes speaking
   useEffect(() => {
     if (voiceLoop && !isSpeaking && !isProcessing && !isListening) {
       const t = setTimeout(start, 600)
       return () => clearTimeout(t)
     }
   }, [voiceLoop, isSpeaking, isProcessing, isListening, start])
+
+  // Clear error lines on code change IF manually changed
+  const handleCodeChange = (newCode) => {
+    setCode(newCode)
+    if (errorLines.length > 0) setErrorLines([])
+  }
 
   const toggleMic = () => {
     if (isListening) {
@@ -269,7 +271,7 @@ export default function App() {
 
       {/* IDE Board */}
       <div style={{ flex: 1, padding: isMobile ? '70px 10px 10px' : 20, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, paddingBottom: isMobile ? 120 : 20 }}>
-        <IDE code={code} onCodeChange={setCode} />
+        <IDE code={code} onCodeChange={setCode} errorLines={errorLines} />
       </div>
 
       {/* Mentor Panel Mobile Wrapper */}
@@ -302,12 +304,6 @@ export default function App() {
           onToggleMic={toggleMic}
           isCollapsed={isMobile && !isMobileChatOpen}
           onExpand={() => setIsMobileChatOpen(true)}
-          proposedCode={proposedCode}
-          onAcceptCode={() => {
-            setCode(proposedCode);
-            setProposedCode(null);
-          }}
-          onRejectCode={() => setProposedCode(null)}
         />
       </div>
     </div>

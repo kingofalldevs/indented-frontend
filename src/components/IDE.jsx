@@ -34,7 +34,7 @@ function highlight(raw) {
 
 
 
-export default function IDE({ code, onCodeChange }) {
+export default function IDE({ code, onCodeChange, errorLines = [] }) {
   const [localCode, setLocalCode] = useState(code || '')
   const [terminal, setTerminal] = useState([{ type: 'sys', text: 'Indie Runtime v1.0 · Ready.' }])
   const [running, setRunning] = useState(false)
@@ -192,10 +192,26 @@ export default function IDE({ code, onCodeChange }) {
 
       {/* Editor area */}
       <div style={{ flex: 2, position: 'relative', overflow: 'hidden', background: '#000' }}>
+        {/* Error Underline Layer */}
+        <div style={{ position: 'absolute', inset: 0, padding: 20, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
+          {errorLines.map((lineNum, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              top: (lineNum - 1) * (15 * 1.75) + 20,
+              left: 20,
+              right: 20,
+              height: (15 * 1.75),
+              borderBottom: '2px wavy rgba(239, 68, 68, 0.7)',
+              zIndex: 0
+            }} />
+          ))}
+        </div>
+        
         <pre ref={preRef} aria-hidden style={{
           position: 'absolute', inset: 0, margin: 0, padding: 20,
           fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
-          color: '#e5e7eb', whiteSpace: 'pre', overflow: 'auto', pointerEvents: 'none', background: 'transparent'
+          color: '#e5e7eb', whiteSpace: 'pre', overflow: 'auto', pointerEvents: 'none', background: 'transparent',
+          zIndex: 2
         }} dangerouslySetInnerHTML={{ __html: highlight(localCode) }} />
         <textarea 
           ref={textareaRef} 
@@ -209,7 +225,8 @@ export default function IDE({ code, onCodeChange }) {
             position: 'absolute', inset: 0, margin: 0, padding: 20,
             fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 15, lineHeight: '1.75',
             color: 'transparent', caretColor: '#3b82f6', background: 'transparent',
-            border: 'none', outline: 'none', resize: 'none', overflow: 'auto', whiteSpace: 'pre'
+            border: 'none', outline: 'none', resize: 'none', overflow: 'auto', whiteSpace: 'pre',
+            zIndex: 3
           }} 
         />
       </div>

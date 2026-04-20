@@ -4,7 +4,7 @@ import { Mic, MicOff, Send } from 'lucide-react'
 
 export default function MentorPanel({ 
   messages, isProcessing, isListening, isSpeaking, onSend, onToggleMic, 
-  isCollapsed, onExpand, proposedCode, onAcceptCode, onRejectCode 
+  isCollapsed, onExpand
 }) {
   const inputRef = useRef(null)
   const logRef = useRef(null)
@@ -46,11 +46,11 @@ export default function MentorPanel({
               transition={{ duration: 1.5, repeat: Infinity }}
               style={{ width: 60, height: 60, borderRadius: '50%', border: '1px solid #3b82f6', overflow: 'hidden' }}
             >
-              <img src="/logo.png" alt="Indie" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src="/logo.png" alt="Nova" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </motion.div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.12em' }}>INDIE</div>
+            <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.12em' }}>NOVA</div>
             <div style={{ fontSize: 10, color: '#3b82f6', fontWeight: 700, letterSpacing: 2, marginTop: 3 }}>LOGIC MENTOR v1.0</div>
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function MentorPanel({
             <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
               <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1, color: m.role === 'user' ? '#444' : '#3b82f6' }}>
-                {m.role === 'user' ? 'YOU' : 'INDIE'}
+                {m.role === 'user' ? 'YOU' : 'NOVA'}
               </div>
               <div style={{
                 padding: '10px 14px', maxWidth: '88%', fontSize: 13, lineHeight: 1.6,
@@ -101,25 +101,9 @@ export default function MentorPanel({
               </div>
             </motion.div>
           ))}
-          
-          {proposedCode && (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              style={{ padding: '14px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid #3b82f6', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
-              <div style={{ color: '#3b82f6', fontSize: 11, fontWeight: 800, letterSpacing: 0.5 }}>INDIE SUGGESTED A CODE UPDATE</div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={onAcceptCode} style={{ flex: 1, padding: '8px 0', background: '#3b82f6', border: 'none', borderRadius: 6, color: '#fff', fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'opacity 0.2s' }}
-                  onMouseEnter={e => e.target.style.opacity = 0.8} onMouseLeave={e => e.target.style.opacity = 1}>
-                  ACCEPT CODE
-                </button>
-                <button onClick={onRejectCode} style={{ flex: 1, padding: '8px 0', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#ccc', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseEnter={e => e.target.style.background = '#222'} onMouseLeave={e => e.target.style.background = 'transparent'}>
-                  DECLINE
-                </button>
-              </div>
-            </motion.div>
-          )}
         </div>
       )}
+
 
       {/* Input bar */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #111', flexShrink: 0 }}>
